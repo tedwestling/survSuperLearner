@@ -302,6 +302,7 @@ survSuperLearner <- function(time, event, X, newX, new.times, event.SL.library, 
       warning(paste("Error in algorithm", lib$predAlgorithm[index],
                     " on full data", "\n  The Algorithm will be removed from the Super Learner (i.e. given weight 0) \n"))
       out <- rep.int(NA, times = nrow(newX))
+      model_out <- NULL
     }
     else {
       out <- testAlg$pred

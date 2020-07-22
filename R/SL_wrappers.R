@@ -340,9 +340,10 @@ survSL.expreg <- function(time, event, X, newX, new.times, obsWeights, ...) {
                                   data = X[time > 0,],
                                   weights = obsWeights[time > 0], dist = 'exponential')
   pred <- predict(fit.expreg, newdata = newX, type = 'quantile', p = seq(0, .999, by=.001))
-  pred <- t(sapply(1:nrow(pred), function(j) {
+  pred <- try(t(sapply(1:nrow(pred), function(j) {
     pos.pred[j] * (1-approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
-  }))
+  })), silent = TRUE)
+  if(inherits(pred, "try-error")) stop("Survival regression failed to produce predictions.")
 
   fit <- list(reg.object = fit.expreg, pos.object = fit.pos)
   class(fit) <- c("survSL.expreg")
@@ -397,9 +398,10 @@ survSL.weibreg <- function(time, event, X, newX, new.times, obsWeights, id, ...)
                                   data = X[time > 0,],
                                   weights = obsWeights[time > 0], dist = 'weibull')
   pred <- predict(fit.weibreg, newdata = newX, type = 'quantile', p = seq(0, .999, by=.001))
-  pred <- t(sapply(1:nrow(pred), function(j) {
+  pred <- try(t(sapply(1:nrow(pred), function(j) {
     pos.pred[j] * (1-approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
-  }))
+  })), silent=TRUE)
+  if(inherits(pred, "try-error")) stop("Survival regression failed to produce predictions.")
 
   fit <- list(reg.object = fit.weibreg, pos.object = fit.pos)
   class(fit) <- c("survSL.weibreg")
@@ -445,9 +447,10 @@ survSL.loglogreg <- function(time, event, X, newX, new.times, obsWeights, id, ..
                                    data = X[time > 0,],
                                    weights = obsWeights[time > 0], dist = 'loglogistic')
   pred <- predict(fit.loglogreg, newdata = newX, type = 'quantile', p = seq(0, .999, by=.001))
-  pred <- t(sapply(1:nrow(pred), function(j) {
+  pred <- try(t(sapply(1:nrow(pred), function(j) {
     pos.pred[j] * (1-approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
-  }))
+  })), silent=TRUE)
+  if(inherits(pred, "try-error")) stop("Survival regression failed to produce predictions.")
 
   fit <- list(reg.object = fit.loglogreg, pos.object = fit.pos)
   class(fit) <- c("survSL.loglogreg")
