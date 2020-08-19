@@ -34,7 +34,7 @@ survlistWrappers <- function (what = "both") {
   invisible(everything)
 }
 
-.survSL.require <- function(package, message = paste('loading required package (', package, ') failed', sep = '')) {
+survSL.require <- function(package, message = paste('loading required package (', package, ') failed', sep = '')) {
   if(!require(package, character.only = TRUE)) {
     stop(message, call. = FALSE)
   }
@@ -97,7 +97,7 @@ survscreen.template <- function(time, event, X, obsWeights, id, ...) {
 
 
 survSL.km <- function(time, event, X, newX, new.times, obsWeights, ...) {
-  .survSL.require("survival")
+  survSL.require("survival")
   fit.km <- survival::survfit(Surv(time, event)~1, weights = obsWeights)
   pred <- matrix(stepfun(fit.km$time, c(1,fit.km$surv), right = FALSE)(new.times),
                  nrow=nrow(newX), ncol = length(new.times), byrow=TRUE)
@@ -142,7 +142,7 @@ predict.survSL.km <- function(object, newX, new.times, ...) {
 
 
 survSL.coxph <- function(time, event, X, newX, new.times, obsWeights, ...) {
-  .survSL.require("survival")
+  survSL.require("survival")
   fit.coxph <- survival::coxph(Surv(time, event) ~ .,
                                data= as.data.frame(cbind(time=time, event=event, X)),
                                weights = obsWeights)
@@ -169,7 +169,7 @@ survSL.coxph <- function(time, event, X, newX, new.times, obsWeights, ...) {
 #' @return Matrix of predictions, with the same number of rows as \code{newX} and number of columns equal to the length of \code{new.times}. Rows index new observations, and columns index new times at which the survival was computed.
 
 predict.survSL.coxph <- function(object, newX, new.times, ...) {
-  .survSL.require("survival")
+  survSL.require("survival")
   pred <- t(summary(survival::survfit(formula = object$object,
                                       newdata = newX,
                                       se.fit = FALSE,
@@ -198,8 +198,8 @@ predict.survSL.coxph <- function(object, newX, new.times, ...) {
 #' @references Ishwaran, H., Kogalur, U. B., Blackstone, E. H., & Lauer, M. S. (2008). Random survival forests. \emph{The Annals of Applied Statistics}, 2(3), 841-860.
 
 survSL.rfsrc <- function(time, event, X, newX, new.times, obsWeights, id, ...) {
-  .survSL.require("survival")
-  .survSL.require("randomForestSRC")
+  survSL.require("survival")
+  survSL.require("randomForestSRC")
   data <- data.frame(time, event)
   data <- cbind(data, X)
   fit.rfsrc <- rfsrc(Surv(time, event) ~ ., data=data, importance = FALSE, case.wt = obsWeights, ...)
@@ -225,7 +225,7 @@ survSL.rfsrc <- function(time, event, X, newX, new.times, obsWeights, id, ...) {
 #' @return Matrix of predictions, with the same number of rows as \code{newX} and number of columns equal to the length of \code{new.times}. Rows index new observations, and columns index new times at which the survival was computed.
 
 predict.survSL.rfsrc <- function(object, newX, new.times, ...) {
-  .survSL.require("randomForestSRC")
+  survSL.require("randomForestSRC")
   survs <- predict(object$object, newdata=newX, importance='none')$survival
   pred <- t(sapply(1:nrow(survs), function(i) {
     approx(c(0,object$object$time.interest), c(1,survs[i,]), method='constant', xout = new.times, rule = 2)$y
@@ -252,7 +252,7 @@ predict.survSL.rfsrc <- function(object, newX, new.times, ...) {
 
 
 survSL.gam <- function(time, event, X, newX, new.times, cts.num = 5, ...) {
-  .survSL.require("mgcv")
+  survSL.require("mgcv")
 
   if ("gam" %in% loadedNamespaces())
     warning("mgcv and gam packages are both in use. You might see an error because both packages use the same function names.")
@@ -325,7 +325,7 @@ predict.survSL.gam <- function(object, newX, new.times, ...) {
 #' \item{fit}{Two-element list including \code{reg.object}, the fitted \code{\link[survival]{survreg}} object, and \code{pos.object}, the fitted \code{\link[stats]{glm}} object for the probability that the event was positive (or 1 if no zeroes were detected).}
 
 survSL.expreg <- function(time, event, X, newX, new.times, obsWeights, ...) {
-  .survSL.require("survival")
+  survSL.require("survival")
 
   if(any(time == 0 & event == 1)) {
     timepos <- as.numeric(time > 0 & event == 1)
@@ -362,7 +362,7 @@ survSL.expreg <- function(time, event, X, newX, new.times, obsWeights, ...) {
 #' @return Matrix of predictions, with the same number of rows as \code{newX} and number of columns equal to the length of \code{new.times}. Rows index new observations, and columns index new times at which the survival was computed.
 
 predict.survSL.expreg <- function(object, newX, new.times, ...) {
-  .survSL.require("survival")
+  survSL.require("survival")
 
   if(inherits(object$pos.object, "glm")) {
     pos.pred <- predict(object$pos.object, newdata = newX, type = 'response')
@@ -383,7 +383,7 @@ predict.survSL.expreg <- function(object, newX, new.times, ...) {
 
 #' @rdname survSL.expreg
 survSL.weibreg <- function(time, event, X, newX, new.times, obsWeights, id, ...) {
-  .survSL.require("survival")
+  survSL.require("survival")
 
   if(any(time == 0 & event == 1)) {
     timepos <- as.numeric(time > 0 & event == 1)
@@ -411,7 +411,7 @@ survSL.weibreg <- function(time, event, X, newX, new.times, obsWeights, id, ...)
 
 #' @rdname predict.survSL.expreg
 predict.survSL.weibreg <- function(object, newX, new.times, ...) {
-  .survSL.require("survival")
+  survSL.require("survival")
 
   if(inherits(object$pos.object, "glm")) {
     pos.pred <- predict(object$pos.object, newdata = newX, type = 'response')
@@ -432,7 +432,7 @@ predict.survSL.weibreg <- function(object, newX, new.times, ...) {
 
 #' @rdname survSL.expreg
 survSL.loglogreg <- function(time, event, X, newX, new.times, obsWeights, id, ...) {
-  .survSL.require("survival")
+  survSL.require("survival")
 
   if(any(time == 0 & event == 1)) {
     timepos <- as.numeric(time > 0 & event == 1)
@@ -460,7 +460,7 @@ survSL.loglogreg <- function(time, event, X, newX, new.times, obsWeights, id, ..
 
 #' @rdname predict.survSL.expreg
 predict.survSL.loglogreg <- function(object, newX, new.times, ...) {
-  .survSL.require("survival")
+  survSL.require("survival")
 
   if(inherits(object$pos.object, "glm")) {
     pos.pred <- predict(object$pos.object, newdata = newX, type = 'response')
@@ -479,6 +479,57 @@ predict.survSL.loglogreg <- function(object, newX, new.times, ...) {
 # est <- survSL.loglogreg(time, 1-event, X = data.frame(W), newX = data.frame(W), new.times = c(0:14, 14.999), obsWeights=rep(1, length(time)), id=NULL)
 # pred <- predict.survSL.weibreg(est$fit, newX = data.frame(W)[1:3,], new.times = c(0:14, 14.999))
 
+#' Wrapper function for piecewise constant hazard regression
+#'
+#' These prediciton algorithm use the \code{\link[pch]{pchreg}} function from the \code{pch} package to estimate piecewise constant hazard regressions.
+#'
+#' @param time Observed follow-up time; i.e. minimum of the event and censoring times.
+#' @param event Observed event indicator; i.e, whether the follow-up time corresponds to an event or censoring.
+#' @param X Training covariate data.frame.
+#' @param newX Test covariate data.frame to use for prediction. Should have the same variable names and structure as \code{X}.
+#' @param new.times Times at which to obtain to obtain the predicted survivals.
+#' @param obsWeights Observation weights.
+#' @param breaks Number or numeric vector of breaks to be passed to \code{\link[pch]{pchreg}}.
+#' @param ... Additional ignored arguments.
+
+survSL.pchreg <- function(time, event, X, newX, new.times, obsWeights, breaks = 4, ...) {
+  survSL.require("pch")
+
+
+  fit.pchreg <- pch::pchreg(Surv(time, event) ~ .,
+                                  data = X,
+                                  weights = obsWeights, breaks = breaks)
+  pred <- try(sapply(new.times, function(t0) {
+    predict(fit.pchreg, newdata = cbind(newX, time = t0), type = 'distr')$Surv
+  }), silent = TRUE)
+  if(inherits(pred, "try-error")) stop("PCH regression failed to produce predictions.")
+
+  fit <- list(reg.object = fit.pchreg)
+  class(fit) <- c("survSL.pchreg")
+  out <- list(pred = pred, fit = fit)
+  return(out)
+}
+
+#' Prediction functions for piecewise constant hazard regression
+#'
+#' Obtains predicted survivals from a fitted piecewise constant hazard regression object.
+#'
+#' @param object Fitted \code{survSL.pchreg} object.
+#' @param newX New covariate data.frame for which to obtain predictions.
+#' @param new.times Times at which to obtain to obtain the predicted survivals.
+#' @param ... Additional ignored arguments.
+#' @return Matrix of predictions, with the same number of rows as \code{newX} and number of columns equal to the length of \code{new.times}. Rows index new observations, and columns index new times at which the survival was computed.
+
+predict.survSL.pchreg <- function(object, newX, new.times, ...) {
+  survSL.require("pch")
+
+  pred <- sapply(new.times, function(t0) {
+    predict(object$fit$reg.object, newdata = cbind(newX, time = t0), type = 'distr')$Surv
+  })
+  return(pred)
+}
+
+
 #' Wrapper function for glmnet screening algorithm
 #'
 #' This screening algorithm uses the \code{\link[glmnet]{glmnet}} function from the \code{glmnet} package to select covariates.
@@ -496,8 +547,8 @@ predict.survSL.loglogreg <- function(object, newX, new.times, ...) {
 #' @return Logical vector of the same length as the number of columns of \code{X} indicating which variables were included.
 
 survscreen.glmnet <- function(time, event, X, obsWeights, alpha = 1, minscreen = 2, nfolds = 10, nlambda = 100, ...) {
-  .survSL.require("glmnet")
-  .survSL.require("survival")
+  survSL.require("glmnet")
+  survSL.require("survival")
   if (!is.matrix(X)) {
     X <- model.matrix(~-1 + ., X)
   }
@@ -534,7 +585,7 @@ survscreen.glmnet <- function(time, event, X, obsWeights, alpha = 1, minscreen =
 #' @return Logical vector of the same length as the number of columns of \code{X} indicating which variables were included.
 
 survscreen.marg <- function(time, event, X, obsWeights, minscreen = 2, min.p = 0.1, ...) {
-  .survSL.require("survival")
+  survSL.require("survival")
   pvals <- apply(X, 2, function(col) {
     est <- survival::coxph(Surv(time, event) ~ ., data =  as.data.frame(cbind(time=time, event=event, col)),
                            weights = obsWeights)
@@ -547,6 +598,8 @@ survscreen.marg <- function(time, event, X, obsWeights, minscreen = 2, min.p = 0
   }
   return(whichVariable)
 }
+
+
 
 #survscreen.marg.10(time, 1-event, X = data.frame(W), obsWeights=rep(1,length(time)), id=NULL)
 

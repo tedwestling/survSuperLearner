@@ -363,14 +363,14 @@ survSuperLearner <- function(time, event, X, newX, new.times, event.SL.library, 
   }
   else {
     event.SL.predict <- matrix(NA, nrow = nrow(newX), ncol = length(new.times))
-    for(j in seq(length(new.times))) event.SL.predict[,j] <- event.libraryPred[,j,] %*% event.coef
+    for(j in seq(length(new.times))) event.SL.predict[,j] <- event.libraryPred[,j,!event.errorsInLibrary] %*% event.coef[!event.errorsInLibrary]
   }
 
   if(cens.k == 1) {
     cens.SL.predict <- cens.libraryPred[,,1]
   } else {
     cens.SL.predict <- matrix(NA, nrow = nrow(newX), ncol = length(new.times))
-    for(j in seq(length(new.times))) cens.SL.predict[,j] <- cens.libraryPred[,j,] %*% cens.coef
+    for(j in seq(length(new.times))) cens.SL.predict[,j] <- cens.libraryPred[,j,!cens.errorsInLibrary] %*% cens.coef[!cens.errorsInLibrary]
   }
 
   time_predict <- proc.time() - time_predict_start
@@ -579,23 +579,23 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
 
 .check.survSL.library <- function (library, addPackages = NULL)  {
   if ("survSL.km" %in% library)
-    .survSL.require("survival", message = "You have selected km as a library algorithm but either do not have the survival package installed or it can not be loaded")
+    survSL.require("survival", message = "You have selected km as a library algorithm but either do not have the survival package installed or it can not be loaded")
   if ("survSL.coxph" %in% library)
-    .survSL.require("survival", message = "You have selected coxph as a library algorithm but either do not have the survival package installed or it can not be loaded")
+    survSL.require("survival", message = "You have selected coxph as a library algorithm but either do not have the survival package installed or it can not be loaded")
   if ("survSL.expreg" %in% library)
-    .survSL.require("survival", message = "You have selected expreg as a library algorithm but either do not have the survival package installed or it can not be loaded")
+    survSL.require("survival", message = "You have selected expreg as a library algorithm but either do not have the survival package installed or it can not be loaded")
   if ("survSL.weibreg" %in% library)
-    .survSL.require("survival", message = "You have selected weibreg as a library algorithm but either do not have the survival package installed or it can not be loaded")
+    survSL.require("survival", message = "You have selected weibreg as a library algorithm but either do not have the survival package installed or it can not be loaded")
   if ("survSL.loglogreg" %in% library)
-    .survSL.require("survival", message = "You have selected loglogreg as a library algorithm but either do not have the survival package installed or it can not be loaded")
+    survSL.require("survival", message = "You have selected loglogreg as a library algorithm but either do not have the survival package installed or it can not be loaded")
   if ("survSL.gam" %in% library)
-    .survSL.require("mgcv", message = "You have selected gam as a library algorithm but either do not have the mgcv package installed or it can not be loaded")
+    survSL.require("mgcv", message = "You have selected gam as a library algorithm but either do not have the mgcv package installed or it can not be loaded")
   if ("survSL.rfsrc" %in% library)
-    .survSL.require("randomForestSRC", message = "You have selected rfsrc as a library algorithm but either do not have the randomForestSRC package installed or it can not be loaded")
+    survSL.require("randomForestSRC", message = "You have selected rfsrc as a library algorithm but either do not have the randomForestSRC package installed or it can not be loaded")
   if ("survscreen.glmnet" %in% library)
-    .survSL.require("glmnet", message = "You have selected glmnet as a screening algorithm but either do not have the glmnet package installed or it can not be loaded")
+    survSL.require("glmnet", message = "You have selected glmnet as a screening algorithm but either do not have the glmnet package installed or it can not be loaded")
   if ("survscreen.marg" %in% library)
-    .survSL.require("survival", message = "You have selected marg as a screening algorithm but either do not have the survival package installed or it can not be loaded")
+    survSL.require("survival", message = "You have selected marg as a screening algorithm but either do not have the survival package installed or it can not be loaded")
   invisible(TRUE)
 }
 
@@ -633,9 +633,9 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
     }
   }
   else {
-    if (sum(event) < V | sum(1-event) < V) {
-      stop("number of (event = 1) or (event = 0) is less than the number of folds")
-    }
+    # if (sum(event) < V | sum(1-event) < V) {
+    #   stop("number of (event = 1) or (event = 0) is less than the number of folds")
+    # }
     if (shuffle) {
       if (is.null(id)) {
         event.0 <- which(event == 0)
@@ -645,7 +645,12 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
         validRows <- vector("list", length = V)
         names(validRows) <- paste(seq(V))
         for (vv in seq(V)) {
-          validRows[[vv]] <- c(rows.0[[vv]], rows.1[[vv]])
+          if (length(rows.0) >= vv) {
+            if (length(rows.1) >= vv) validRows[[vv]] <- c(rows.0[[vv]], rows.1[[vv]])
+            else validRows[[vv]] <- rows.0[[vv]]
+          } else {
+            validRows[[vv]] <- rows.1[[vv]]
+          }
         }
       }
       else {
@@ -730,6 +735,7 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
                              obsWeights = obsWeights, id = id)
     obs.event.vals <- rep(diag(initFit$pred), length(control$cens.t.grid))
   }
+  obs.event.vals[obs.event.vals == 0] <- min(obs.event.vals[obs.event.vals > 0])
 
   iter <- 1
   while(TRUE) {
@@ -747,6 +753,7 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
                                                        obsWeights = obsWeights.cens.long)
 
     obs.cens.vals <- rep(c(cens.Z.obs %*% G.coef), length(control$event.t.grid))
+    obs.cens.vals[obs.cens.vals == 0] <- min(obs.cens.vals[obs.cens.vals > 0])
 
     S.coef[!event.errorsInLibrary] <- .survcomputeCoef(time = time.event.long, event = event.event.long,
                                                         t.vals = event.t.grid.long, cens.vals = obs.cens.vals,
@@ -754,6 +761,8 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
                                                         obsWeights = obsWeights.event.long)
 
     obs.event.vals <- rep(c(event.Z.obs %*% S.coef), length(control$cens.t.grid))
+    obs.event.vals[obs.event.vals == 0] <- min(obs.event.vals[obs.event.vals > 0])
+
     if(!is.null(obs.cens.vals.old) & !is.null(obs.event.vals.old)) {
       cens.delta <- max(abs(obs.cens.vals - obs.cens.vals.old))
       event.delta <- max(abs(obs.event.vals - obs.event.vals.old))

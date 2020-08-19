@@ -4,8 +4,7 @@
 \alias{survscreen.marg}
 \title{Wrapper function for marginal Cox regression screening algorithm}
 \usage{
-survscreen.marg(time, event, X, obsWeights, minscreen = 2, min.p = 0.1,
-  ...)
+survscreen.marg(time, event, X, obsWeights, minscreen = 2, min.p = 0.1, ...)
 }
 \arguments{
 \item{time}{Observed follow-up time; i.e. minimum of the event and censoring times.}

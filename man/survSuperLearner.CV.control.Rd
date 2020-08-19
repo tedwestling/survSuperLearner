@@ -4,8 +4,12 @@
 \alias{survSuperLearner.CV.control}
 \title{Control parameters for the cross validation steps in survival Super Learner}
 \usage{
-survSuperLearner.CV.control(V = 10L, stratifyCV = TRUE,
-  shuffle = TRUE, validRows = NULL)
+survSuperLearner.CV.control(
+  V = 10L,
+  stratifyCV = TRUE,
+  shuffle = TRUE,
+  validRows = NULL
+)
 }
 \arguments{
 \item{V}{Number of cross-validation folds. Defaults to 10.}

@@ -4,9 +4,17 @@
 \alias{predict.survSuperLearner}
 \title{Prediction function for survival Super Learner}
 \usage{
-\method{predict}{survSuperLearner}(object, newdata, new.times, X = NULL,
-  time = NULL, event = NULL, onlySL = FALSE, threshold = 1e-04,
-  ...)
+\method{predict}{survSuperLearner}(
+  object,
+  newdata,
+  new.times,
+  X = NULL,
+  time = NULL,
+  event = NULL,
+  onlySL = FALSE,
+  threshold = 1e-04,
+  ...
+)
 }
 \arguments{
 \item{object}{Fitted \code{survSuperLearner} object.}

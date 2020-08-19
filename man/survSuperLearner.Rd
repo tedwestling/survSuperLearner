@@ -4,9 +4,20 @@
 \alias{survSuperLearner}
 \title{Super Learner for conditional survival functions}
 \usage{
-survSuperLearner(time, event, X, newX, new.times, event.SL.library,
-  cens.SL.library, id = NULL, verbose = FALSE, control = list(),
-  cvControl = list(), obsWeights = NULL)
+survSuperLearner(
+  time,
+  event,
+  X,
+  newX,
+  new.times,
+  event.SL.library,
+  cens.SL.library,
+  id = NULL,
+  verbose = FALSE,
+  control = list(),
+  cvControl = list(),
+  obsWeights = NULL
+)
 }
 \arguments{
 \item{time}{\code{n x 1} numeric vector of observed right-censored follow-up times; i.e. the minimum of the event and censoring times.}

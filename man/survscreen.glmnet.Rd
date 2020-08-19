@@ -4,8 +4,17 @@
 \alias{survscreen.glmnet}
 \title{Wrapper function for glmnet screening algorithm}
 \usage{
-survscreen.glmnet(time, event, X, obsWeights, alpha = 1, minscreen = 2,
-  nfolds = 10, nlambda = 100, ...)
+survscreen.glmnet(
+  time,
+  event,
+  X,
+  obsWeights,
+  alpha = 1,
+  minscreen = 2,
+  nfolds = 10,
+  nlambda = 100,
+  ...
+)
 }
 \arguments{
 \item{time}{Observed follow-up time; i.e. minimum of the event and censoring times.}

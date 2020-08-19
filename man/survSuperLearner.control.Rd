@@ -4,9 +4,14 @@
 \alias{survSuperLearner.control}
 \title{Control parameters for the survival Super Learner}
 \usage{
-survSuperLearner.control(initWeightAlg = "survSL.rfsrc",
-  initWeight = "censoring", max.SL.iter = 20, event.t.grid,
-  cens.t.grid, saveFitLibrary = TRUE)
+survSuperLearner.control(
+  initWeightAlg = "survSL.rfsrc",
+  initWeight = "censoring",
+  max.SL.iter = 20,
+  event.t.grid,
+  cens.t.grid,
+  saveFitLibrary = TRUE
+)
 }
 \arguments{
 \item{initWeightAlg}{Algorithm to use for the first iteration of the iterative SuperLearner algorithm. Defaults to \code{survSL.rfsrc}}
