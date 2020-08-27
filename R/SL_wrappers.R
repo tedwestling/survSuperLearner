@@ -481,7 +481,7 @@ predict.survSL.loglogreg <- function(object, newX, new.times, ...) {
 
 #' Wrapper function for piecewise constant hazard regression
 #'
-#' These prediciton algorithm use the \code{\link[pch]{pchreg}} function from the \code{pch} package to estimate piecewise constant hazard regressions.
+#' This prediciton algorithm uses the \code{\link[pch]{pchreg}} function from the \code{pch} package to estimate piecewise constant hazard regressions.
 #'
 #' @param time Observed follow-up time; i.e. minimum of the event and censoring times.
 #' @param event Observed event indicator; i.e, whether the follow-up time corresponds to an event or censoring.
@@ -526,6 +526,108 @@ predict.survSL.pchreg <- function(object, newX, new.times, ...) {
   pred <- sapply(new.times, function(t0) {
     predict(object$fit$reg.object, newdata = cbind(newX, time = t0), type = 'distr')$Surv
   })
+  return(pred)
+}
+
+
+#' Wrapper function for piecewise constant hazard SuperLearner
+#'
+#' This prediciton algorithm assumes that the hazard is constant on intervals, and estimates the hazard
+#' within each interval conditional on covariates flexibly using SuperLearner.
+#'
+#' @param time Observed follow-up time; i.e. minimum of the event and censoring times.
+#' @param event Observed event indicator; i.e, whether the follow-up time corresponds to an event or censoring.
+#' @param X Training covariate data.frame.
+#' @param newX Test covariate data.frame to use for prediction. Should have the same variable names and structure as \code{X}.
+#' @param new.times Times at which to obtain to obtain the predicted survivals.
+#' @param obsWeights Observation weights.
+#' @param breaks Either the number of intervals to use or the endpoints of the intervals.
+#' @param SL.library Library to use for SuperLearning of individual bins.
+#' @param ... Additional ignored arguments.
+#'
+survSL.pchSL <- function(time, event, X, newX, new.times, obsWeights, breaks, SL.library, ...) {
+  survSL.require("SuperLearner")
+  if(length(breaks) == 1) {
+    n.intervals <- breaks
+    breaks <- c(0,as.numeric(quantile(time[event == 1], probs = seq(0,1,by=1/n.intervals)[-1])))
+  } else {
+    n.intervals <- length(breaks) - 1
+  }
+  #breaks[length(breaks)] <- Inf
+  intervals <- cbind(breaks[-length(breaks)], breaks[-1])
+
+  sl.fits <- lapply(1:n.intervals, function(j) {
+    if(j == 1) samp <- time >= 0
+    else samp <- time > intervals[j,1]
+    if(j < n.intervals) outcome <- as.numeric(time <= intervals[j,2] & event == 1)
+    else outcome <- event
+    fit <- try(SuperLearner::SuperLearner(Y = outcome[samp], X = X[samp,], newX = newX, SL.library = SL.library, family = 'binomial', method = 'method.NNloglik', obsWeights = obsWeights[samp]), silent=TRUE)
+    if(inherits(fit, "try-error")) {
+      fit <- try(SuperLearner::SuperLearner(Y = outcome[samp], X = X[samp,], newX = newX, SL.library = SL.library, family = 'binomial', method = 'method.NNLS', obsWeights = obsWeights[samp]), silent=TRUE)
+      if(inherits(fit, "try-error")) {
+        fit <- try(SuperLearner::SuperLearner(Y = outcome[samp], X = X[samp,], newX = newX, SL.library = SL.library, family = 'binomial', method = 'method.NNLS', obsWeights = obsWeights[samp]), silent=TRUE)
+        if(inherits(fit, "try-error")) stop("Error in computing bin SuperLearner.")
+      }
+    }
+    fit
+  })
+
+  hazard.ests <- sapply(1:n.intervals, function(j) {
+    sl.fits[[j]]$SL.predict / (intervals[j,2] - intervals[j,1])
+  })
+
+  cum.hazard.ests <- t(apply(hazard.ests, 1, function(row) {
+    cumsum(row * diff(breaks))
+  }))
+
+  new.time.bins <- findInterval(new.times, breaks, all.inside = TRUE)
+
+  pred <- sapply(1:length(new.times), function(j) {
+    bin <- new.time.bins[j]
+    if(bin > 1) base <- cum.hazard.ests[,bin-1]
+    else base <- 0
+    exp(-(base + hazard.ests[,bin] * (new.times[j] - breaks[bin])))
+  })
+
+  fit <- list(sl.fits = sl.fits, breaks=breaks)
+  class(fit) <- c("survSL.pchSL")
+  out <- list(pred = pred, fit = fit)
+  return(out)
+}
+
+#' Prediction functions for piecewise constant hazard SuperLearner prediction algorithm
+#'
+#' Obtains predicted survivals from a fitted \code{survSL.pchSL} object.
+#'
+#' @param object Fitted \code{survSL.coxph} object.
+#' @param newX New covariate data.frame for which to obtain predictions.
+#' @param new.times Times at which to obtain to obtain the predicted survivals.
+#' @param ... Additional ignored arguments.
+#' @return Matrix of predictions, with the same number of rows as \code{newX} and number of columns equal to the length of \code{new.times}. Rows index new observations, and columns index new times at which the survival was computed.
+
+predict.survSL.pchSL <- function(object, newX, new.times, ...) {
+  survSL.require("SuperLearner")
+  breaks <- object$fit$breaks
+  n.intervals <- length(breaks) - 1
+  intervals <- cbind(breaks[-length(breaks)], breaks[-1])
+
+  hazard.ests <- sapply(1:n.intervals, function(j) {
+    predict(object$fit$sl.fits[[j]], newdata=newX)$pred / (intervals[j,2] - intervals[j,1])
+  })
+
+  cum.hazard.ests <- t(apply(hazard.ests, 1, function(row) {
+    cumsum(row * diff(breaks))
+  }))
+
+  new.time.bins <- findInterval(new.times, breaks, all.inside = TRUE)
+
+  pred <- sapply(1:length(new.times), function(j) {
+    bin <- new.time.bins[j]
+    if(bin > 1) base <- cum.hazard.ests[,bin-1]
+    else base <- 0
+    exp(-(base + hazard.ests[,bin] * (new.times[j] - breaks[bin])))
+  })
+
   return(pred)
 }
 
