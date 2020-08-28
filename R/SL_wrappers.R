@@ -151,6 +151,9 @@ survSL.coxph <- function(time, event, X, newX, new.times, obsWeights, ...) {
                                       se.fit = FALSE,
                                       conf.int = FALSE),
                     times=new.times)$surv)
+  if(ncol(pred) < length(new.times)) {
+    pred <- cbind(pred, matrix(pred[,ncol(pred)], nrow=nrow(pred), ncol=length(new.times) - ncol(pred)))
+  }
 
   fit <- list(object = fit.coxph)
   class(fit) <- c("survSL.coxph")
@@ -175,6 +178,9 @@ predict.survSL.coxph <- function(object, newX, new.times, ...) {
                                       se.fit = FALSE,
                                       conf.int = FALSE),
                     times=new.times)$surv)
+  if(ncol(pred) < length(new.times)) {
+    pred <- cbind(pred, matrix(pred[,ncol(pred)], nrow=nrow(pred), ncol=length(new.times) - ncol(pred)))
+  }
   return(pred)
 }
 
@@ -599,7 +605,7 @@ survSL.pchSL <- function(time, event, X, newX, new.times, obsWeights, breaks, SL
 #'
 #' Obtains predicted survivals from a fitted \code{survSL.pchSL} object.
 #'
-#' @param object Fitted \code{survSL.coxph} object.
+#' @param object Fitted \code{survSL.pchSL} object.
 #' @param newX New covariate data.frame for which to obtain predictions.
 #' @param new.times Times at which to obtain to obtain the predicted survivals.
 #' @param ... Additional ignored arguments.

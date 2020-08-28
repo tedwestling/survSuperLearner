@@ -200,7 +200,9 @@ survSuperLearner <- function(time, event, X, newX, new.times, event.SL.library, 
                         "\n  The Algorithm will be removed from the Super Learner (i.e. given weight 0) \n"))
         } else {
           libraryRows <- which(library$library$predAlgorithm == predAlg & library$library$rowScreen %in% unlist(screenMap[j]))
-          for (row in libraryRows) out[,,row] <- testAlg$pred
+          for (row in libraryRows) {
+            out[,,row] <- testAlg$pred
+          }
         }
       }
 
