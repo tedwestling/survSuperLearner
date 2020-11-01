@@ -519,7 +519,7 @@ predict.survSuperLearner <- function (object, newdata, new.times, X = NULL, time
 #' @param saveFitLibrary Logical indicating whether to save the fit library on the full data. Defaults to \code{TRUE}. If \code{FALSE}, cannot obtain predicted values on new data later.
 #' @return Returns a named list with control parameters.
 
-survSuperLearner.control <- function (initWeightAlg = "survSL.rfsrc", initWeight = "censoring", max.SL.iter = 20, event.t.grid, cens.t.grid, saveFitLibrary = TRUE) {
+survSuperLearner.control <- function (initWeightAlg = "survSL.rfsrc", initWeight = "censoring", max.SL.iter = 20, event.t.grid, cens.t.grid, saveFitLibrary = TRUE, ...) {
   if(!(initWeight %in% c("event", "censoring")))
     stop("initWeight must be one of event or censoring.")
 
