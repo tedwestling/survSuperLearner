@@ -785,10 +785,13 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
 
 .survcomputeCoef <- function(time, event, t.vals, cens.vals, preds, obsWeights) {
   if(ncol(preds) == 1) return(1)
-  ind <- as.numeric(time > t.vals)
-  obsweight <- obsWeights * event / cens.vals
+  out <- 1 - as.numeric(time <= t.vals) * event / cens.vals
   library(nnls)
-  fit.nnls <- nnls(sqrt(obsweight) * preds, sqrt(obsweight) * ind)
+  fit.nnls <- nnls(sqrt(obsWeights) * preds, sqrt(obsWeights) * out)
+  # ind <- as.numeric(time > t.vals)
+  # obsweight <- obsWeights * event / cens.vals
+  # library(nnls)
+  # fit.nnls <- nnls(sqrt(obsweight) * preds, sqrt(obsweight) * ind)
   coef <- coef(fit.nnls)
   if(sum(coef) == 0) {
     warning("All coefficients in NNLS fit are zero.")
