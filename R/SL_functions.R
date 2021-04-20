@@ -742,14 +742,14 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
   iter <- 1
   while(TRUE) {
     if(iter > control$max.SL.iter) {
-      warning("Did not converge in ", max.SL.iter, " iterations")
+      warning("Did not converge in ", control$max.SL.iter, " iterations")
       break
     }
     if(!is.null(obs.cens.vals)) obs.cens.vals.old <- obs.cens.vals
     if(!is.null(obs.event.vals)) obs.event.vals.old <- obs.event.vals
 
     G.coef <- rep(0, cens.k)
-    G.coef[!cens.errorsInLibrary] <- .survcomputeCoef(time = time.cens.long, event = 1 - event.cens.long,
+    G.coef[!cens.errorsInLibrary] <- .survcomputeCoef2(time = time.cens.long, event = 1 - event.cens.long,
                                                        t.vals = cens.t.grid.long, cens.vals = obs.event.vals,
                                                        preds = cens.Z.long[,!cens.errorsInLibrary, drop=FALSE],
                                                        obsWeights = obsWeights.cens.long)
@@ -757,7 +757,7 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
     obs.cens.vals <- rep(c(cens.Z.obs %*% G.coef), length(control$event.t.grid))
     obs.cens.vals[obs.cens.vals == 0] <- min(obs.cens.vals[obs.cens.vals > 0])
 
-    S.coef[!event.errorsInLibrary] <- .survcomputeCoef(time = time.event.long, event = event.event.long,
+    S.coef[!event.errorsInLibrary] <- .survcomputeCoef2(time = time.event.long, event = event.event.long,
                                                         t.vals = event.t.grid.long, cens.vals = obs.cens.vals,
                                                         preds = event.Z.long[,!event.errorsInLibrary, drop=FALSE],
                                                         obsWeights = obsWeights.event.long)
@@ -773,12 +773,23 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
         break
       }
     }
+    iter <- iter + 1
   }
+  # event.cvRisks <- apply(event.Z.long, 2, function(col) {
+  #   mean((obsWeights.event.long * event.event.long / obs.cens.vals) * (as.numeric(time.event.long > event.t.grid.long) - col)^2)
+  # })
   event.cvRisks <- apply(event.Z.long, 2, function(col) {
-    mean((obsWeights.event.long * event.event.long / obs.cens.vals) * (as.numeric(time.event.long > event.t.grid.long) - col)^2)
+    -mean(obsWeights.event.long * ifelse(time.event.long <= event.t.grid.long & event.event.long == 1,
+                                             (1 - 1/obs.cens.vals) * log(col) + (1 / obs.cens.vals) * log(1 - col),
+                                             log(col)))
   })
+  # cens.cvRisks <- apply(cens.Z.long, 2, function(col) {
+  #   mean((obsWeights.cens.long * (1-event.cens.long) / obs.event.vals) * (as.numeric(time.cens.long > cens.t.grid.long) - col)^2)
+  # })
   cens.cvRisks <- apply(cens.Z.long, 2, function(col) {
-    mean((obsWeights.cens.long * (1-event.cens.long) / obs.event.vals) * (as.numeric(time.cens.long > cens.t.grid.long) - col)^2)
+    -mean(obsWeights.cens.long * ifelse(time.cens.long <= cens.t.grid.long & event.cens.long == 1,
+                                         (1 - 1/obs.event.vals) * log(col) + (1 / obs.event.vals) * log(1 - col),
+                                         log(col)))
   })
   return(list(event.coef = S.coef, cens.coef = G.coef, event.cvRisks = event.cvRisks, cens.cvRisks = cens.cvRisks))
 }
@@ -795,6 +806,29 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
   coef <- coef(fit.nnls)
   if(sum(coef) == 0) {
     warning("All coefficients in NNLS fit are zero.")
+    coef <- rep(1,length(coef))
+  }
+  coef  / sum(coef)
+}
+
+.alogb <- function(a,b) {
+  ifelse(a == 0, )
+}
+
+.survcomputeCoef2 <- function(time, event, t.vals, cens.vals, preds, obsWeights) {
+  if(ncol(preds) == 1) return(1)
+  out <- 1 - as.numeric(time <= t.vals) * event / cens.vals
+
+  cv_risk <- function(beta) -mean(obsWeights * ifelse(time <= t.vals & event == 1,
+                                                      (1 - 1/cens.vals) * log(preds %*% beta) + (1 / cens.vals) * log(1 - preds %*% beta),
+                                                      log(preds %*% beta)))
+
+  library(Rsolnp)
+  capture.output(solnp_solution <- solnp(rep(1/ncol(preds), ncol(preds)), cv_risk, eqfun=sum, eqB=1, ineqfun=function(beta) beta, ineqLB=rep(0,ncol(preds)), ineqUB=rep(1, ncol(preds))))
+
+  coef <- solnp_solution$pars
+  if(sum(coef) == 0) {
+    warning("All coefficients in solnp fit are zero.")
     coef <- rep(1,length(coef))
   }
   coef  / sum(coef)
