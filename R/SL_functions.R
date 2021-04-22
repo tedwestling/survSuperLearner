@@ -749,7 +749,7 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
     if(!is.null(obs.event.vals)) obs.event.vals.old <- obs.event.vals
 
     G.coef <- rep(0, cens.k)
-    G.coef[!cens.errorsInLibrary] <- .survcomputeCoef2(time = time.cens.long, event = 1 - event.cens.long,
+    G.coef[!cens.errorsInLibrary] <- .survcomputeCoef(time = time.cens.long, event = 1 - event.cens.long,
                                                        t.vals = cens.t.grid.long, cens.vals = obs.event.vals,
                                                        preds = cens.Z.long[,!cens.errorsInLibrary, drop=FALSE],
                                                        obsWeights = obsWeights.cens.long)
@@ -757,7 +757,7 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
     obs.cens.vals <- rep(c(cens.Z.obs %*% G.coef), length(control$event.t.grid))
     obs.cens.vals[obs.cens.vals == 0] <- min(obs.cens.vals[obs.cens.vals > 0])
 
-    S.coef[!event.errorsInLibrary] <- .survcomputeCoef2(time = time.event.long, event = event.event.long,
+    S.coef[!event.errorsInLibrary] <- .survcomputeCoef(time = time.event.long, event = event.event.long,
                                                         t.vals = event.t.grid.long, cens.vals = obs.cens.vals,
                                                         preds = event.Z.long[,!event.errorsInLibrary, drop=FALSE],
                                                         obsWeights = obsWeights.event.long)
@@ -778,19 +778,28 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
   # event.cvRisks <- apply(event.Z.long, 2, function(col) {
   #   mean((obsWeights.event.long * event.event.long / obs.cens.vals) * (as.numeric(time.event.long > event.t.grid.long) - col)^2)
   # })
+
   event.cvRisks <- apply(event.Z.long, 2, function(col) {
-    -mean(obsWeights.event.long * ifelse(time.event.long <= event.t.grid.long & event.event.long == 1,
-                                             (1 - 1/obs.cens.vals) * log(col) + (1 / obs.cens.vals) * log(1 - col),
-                                             log(col)))
+    mean(obsWeights.event.long * ( 1 - as.numeric(time.event.long <= event.t.grid.long) * event.event.long /  obs.cens.vals - col)^2)
   })
+
+  # event.cvRisks <- apply(event.Z.long, 2, function(col) {
+  #   -mean(obsWeights.event.long * ifelse(time.event.long <= event.t.grid.long & event.event.long == 1,
+  #                                            (1 - 1/obs.cens.vals) * log(col) + (1 / obs.cens.vals) * log(1 - col),
+  #                                            log(col)))
+  # })
   # cens.cvRisks <- apply(cens.Z.long, 2, function(col) {
   #   mean((obsWeights.cens.long * (1-event.cens.long) / obs.event.vals) * (as.numeric(time.cens.long > cens.t.grid.long) - col)^2)
   # })
   cens.cvRisks <- apply(cens.Z.long, 2, function(col) {
-    -mean(obsWeights.cens.long * ifelse(time.cens.long <= cens.t.grid.long & event.cens.long == 1,
-                                         (1 - 1/obs.event.vals) * log(col) + (1 / obs.event.vals) * log(1 - col),
-                                         log(col)))
+    mean(obsWeights.cens.long * ( 1 - as.numeric(time.cens.long <= cens.t.grid.long) * event.cens.long /  obs.event.vals - col)^2)
   })
+
+  # cens.cvRisks <- apply(cens.Z.long, 2, function(col) {
+  #   -mean(obsWeights.cens.long * ifelse(time.cens.long <= cens.t.grid.long & event.cens.long == 1,
+  #                                        (1 - 1/obs.event.vals) * log(col) + (1 / obs.event.vals) * log(1 - col),
+  #                                        log(col)))
+  # })
   return(list(event.coef = S.coef, cens.coef = G.coef, event.cvRisks = event.cvRisks, cens.cvRisks = cens.cvRisks))
 }
 
