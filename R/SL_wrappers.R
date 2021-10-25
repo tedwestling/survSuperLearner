@@ -250,6 +250,9 @@ predict.survSL.rfsrc <- function(object, newX, new.times, ...) {
 
 
 survSL.gam <- function(time, event, X, newX, new.times, cts.num = 5, ...) {
+  
+  if (any(round(list(...)[["obsWeights"]],8)!=1))
+    warning("Argument 'obsWeights' is ignored by the 'gam' library algorithm")
   if ("gam" %in% loadedNamespaces())
     warning("mgcv and gam packages are both in use. You might see an error because both packages use the same function names.")
   cts.x <- apply(X, 2, function(x) (length(unique(x)) > cts.num))
