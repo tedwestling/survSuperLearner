@@ -70,6 +70,16 @@
 
 
 survSuperLearner <- function(time, event, X, newX, new.times, event.SL.library, cens.SL.library, id = NULL, verbose = FALSE, control = list(), cvControl = list(), obsWeights = NULL)  {
+  
+  # Check to see if required packages are installed
+  packages <- c("survival", "mgcv", "randomForestSRC", "glmnet", "SuperLearner",
+                "nnls", "Rsolnp")
+  for (pkg in packages) {
+    if (!requireNamespace(pkg, quietly=TRUE)) {
+      stop(paste0("Package '", pkg, "' is required by survSuperLearner."))
+    }
+  }
+  
   time_start <- proc.time()
   call <- match.call(expand.dots = TRUE)
   if (!is.null(dim(time)) && ncol(time) > 0) stop("time must be an (n x 1)  numeric vector.")
@@ -112,12 +122,7 @@ survSuperLearner <- function(time, event, X, newX, new.times, event.SL.library, 
   cvControl <- do.call("survSuperLearner.CV.control", cvControl)
 
   event.library <- .createLibrary(event.SL.library)
-  .check.survSL.library(library = c(unique(event.library$library$predAlgorithm),
-                                     event.library$screenAlgorithm))
-
   cens.library <- .createLibrary(cens.SL.library)
-  .check.survSL.library(library = c(unique(cens.library$library$predAlgorithm),
-                                     cens.library$screenAlgorithm))
 
   event.k <- nrow(event.library$library)
   cens.k <- nrow(cens.library$library)
@@ -579,28 +584,6 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
   return(out)
 }
 
-.check.survSL.library <- function (library, addPackages = NULL)  {
-  if ("survSL.km" %in% library)
-    survSL.require("survival", message = "You have selected km as a library algorithm but either do not have the survival package installed or it can not be loaded")
-  if ("survSL.coxph" %in% library)
-    survSL.require("survival", message = "You have selected coxph as a library algorithm but either do not have the survival package installed or it can not be loaded")
-  if ("survSL.expreg" %in% library)
-    survSL.require("survival", message = "You have selected expreg as a library algorithm but either do not have the survival package installed or it can not be loaded")
-  if ("survSL.weibreg" %in% library)
-    survSL.require("survival", message = "You have selected weibreg as a library algorithm but either do not have the survival package installed or it can not be loaded")
-  if ("survSL.loglogreg" %in% library)
-    survSL.require("survival", message = "You have selected loglogreg as a library algorithm but either do not have the survival package installed or it can not be loaded")
-  if ("survSL.gam" %in% library)
-    survSL.require("mgcv", message = "You have selected gam as a library algorithm but either do not have the mgcv package installed or it can not be loaded")
-  if ("survSL.rfsrc" %in% library)
-    survSL.require("randomForestSRC", message = "You have selected rfsrc as a library algorithm but either do not have the randomForestSRC package installed or it can not be loaded")
-  if ("survscreen.glmnet" %in% library)
-    survSL.require("glmnet", message = "You have selected glmnet as a screening algorithm but either do not have the glmnet package installed or it can not be loaded")
-  if ("survscreen.marg" %in% library)
-    survSL.require("survival", message = "You have selected marg as a screening algorithm but either do not have the survival package installed or it can not be loaded")
-  invisible(TRUE)
-}
-
 .survCVFolds <- function (N, id, event, cvControl) {
   if (!is.null(cvControl$validRows)) return(cvControl$validRows)
   stratifyCV <- cvControl$stratifyCV
@@ -696,14 +679,14 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
   event.Z.obs <- matrix(NA, nrow = N, ncol = event.k)
   for(i in seq(N)) {
     for(j in seq(event.k)) {
-      event.Z.obs[i,j] <- approx(control$event.t.grid, event.Z[i,,j], xout = time[i], method = 'constant', rule = 2)$y
+      event.Z.obs[i,j] <- stats::approx(control$event.t.grid, event.Z[i,,j], xout = time[i], method = 'constant', rule = 2)$y
     }
   }
 
   cens.Z.obs <- matrix(NA, nrow = N, ncol = cens.k)
   for(i in seq(N)) {
     for(j in seq(cens.k)) {
-      cens.Z.obs[,j] <- approx(c(-1,control$cens.t.grid), c(1,cens.Z[i,,j]), xout = time[i] - epsilon, method = 'constant', rule = 2)$y
+      cens.Z.obs[,j] <- stats::approx(c(-1,control$cens.t.grid), c(1,cens.Z[i,,j]), xout = time[i] - epsilon, method = 'constant', rule = 2)$y
     }
   }
 
@@ -806,12 +789,10 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
 .survcomputeCoef <- function(time, event, t.vals, cens.vals, preds, obsWeights) {
   if(ncol(preds) == 1) return(1)
   out <- 1 - as.numeric(time <= t.vals) * event / cens.vals
-  library(nnls)
-  fit.nnls <- nnls(sqrt(obsWeights) * preds, sqrt(obsWeights) * out)
+  fit.nnls <- nnls::nnls(sqrt(obsWeights) * preds, sqrt(obsWeights) * out)
   # ind <- as.numeric(time > t.vals)
   # obsweight <- obsWeights * event / cens.vals
-  # library(nnls)
-  # fit.nnls <- nnls(sqrt(obsweight) * preds, sqrt(obsweight) * ind)
+  # fit.nnls <- nnls::nnls(sqrt(obsweight) * preds, sqrt(obsweight) * ind)
   coef <- coef(fit.nnls)
   if(sum(coef) == 0) {
     warning("All coefficients in NNLS fit are zero.")
@@ -832,8 +813,7 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
                                                       (1 - 1/cens.vals) * log(preds %*% beta) + (1 / cens.vals) * log(1 - preds %*% beta),
                                                       log(preds %*% beta)))
 
-  library(Rsolnp)
-  capture.output(solnp_solution <- solnp(rep(1/ncol(preds), ncol(preds)), cv_risk, eqfun=sum, eqB=1, ineqfun=function(beta) beta, ineqLB=rep(0,ncol(preds)), ineqUB=rep(1, ncol(preds))))
+  capture.output(solnp_solution <- Rsolnp::solnp(rep(1/ncol(preds), ncol(preds)), cv_risk, eqfun=sum, eqB=1, ineqfun=function(beta) beta, ineqLB=rep(0,ncol(preds)), ineqUB=rep(1, ncol(preds))))
 
   coef <- solnp_solution$pars
   if(sum(coef) == 0) {
