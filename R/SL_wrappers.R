@@ -34,13 +34,6 @@ survlistWrappers <- function (what = "both") {
   invisible(everything)
 }
 
-survSL.require <- function(package, message = paste('loading required package (', package, ') failed', sep = '')) {
-  if(!require(package, character.only = TRUE)) {
-    stop(message, call. = FALSE)
-  }
-  invisible(TRUE)
-}
-
 #' Wrapper functions for prediction algorithms in survSuperLearner
 #'
 #' This is a template function for a \code{survSuperLearner} prediction algorithm. You can use this to write your own prediction algorithms.
@@ -97,9 +90,11 @@ survscreen.template <- function(time, event, X, obsWeights, id, ...) {
 
 
 survSL.km <- function(time, event, X, newX, new.times, obsWeights, ...) {
-  survSL.require("survival")
-  fit.km <- survival::survfit(Surv(time, event)~1, weights = obsWeights)
-  pred <- matrix(stepfun(fit.km$time, c(1,fit.km$surv), right = FALSE)(new.times),
+  fit.km <- survival::survfit(
+    survival::Surv(time, event)~1,
+    weights = obsWeights
+  )
+  pred <- matrix(stats::stepfun(fit.km$time, c(1,fit.km$surv), right = FALSE)(new.times),
                  nrow=nrow(newX), ncol = length(new.times), byrow=TRUE)
 
   fit <- list(object = fit.km)
@@ -119,7 +114,7 @@ survSL.km <- function(time, event, X, newX, new.times, obsWeights, ...) {
 #' @return Matrix of predictions, with the same number of rows as \code{newX} and number of columns equal to the length of \code{new.times}. Rows index new observations, and columns index new times at which the survival was computed.
 
 predict.survSL.km <- function(object, newX, new.times, ...) {
-  matrix(stepfun(object$object$time, c(1,object$object$surv), right = FALSE)(new.times),
+  matrix(stats::stepfun(object$object$time, c(1,object$object$surv), right = FALSE)(new.times),
          nrow=nrow(newX), ncol = length(new.times), byrow=TRUE)
 }
 
@@ -142,10 +137,11 @@ predict.survSL.km <- function(object, newX, new.times, ...) {
 
 
 survSL.coxph <- function(time, event, X, newX, new.times, obsWeights, ...) {
-  survSL.require("survival")
-  fit.coxph <- survival::coxph(Surv(time, event) ~ .,
-                               data= as.data.frame(cbind(time=time, event=event, X)),
-                               weights = obsWeights)
+  fit.coxph <- survival::coxph(
+    survival::Surv(time, event) ~ .,
+    data = as.data.frame(cbind(time=time, event=event, X)),
+    weights = obsWeights
+  )
   pred <- t(summary(survival::survfit(fit.coxph,
                                       newdata=newX,
                                       se.fit = FALSE,
@@ -172,7 +168,6 @@ survSL.coxph <- function(time, event, X, newX, new.times, obsWeights, ...) {
 #' @return Matrix of predictions, with the same number of rows as \code{newX} and number of columns equal to the length of \code{new.times}. Rows index new observations, and columns index new times at which the survival was computed.
 
 predict.survSL.coxph <- function(object, newX, new.times, ...) {
-  survSL.require("survival")
   pred <- t(summary(survival::survfit(formula = object$object,
                                       newdata = newX,
                                       se.fit = FALSE,
@@ -204,14 +199,12 @@ predict.survSL.coxph <- function(object, newX, new.times, ...) {
 #' @references Ishwaran, H., Kogalur, U. B., Blackstone, E. H., & Lauer, M. S. (2008). Random survival forests. \emph{The Annals of Applied Statistics}, 2(3), 841-860.
 
 survSL.rfsrc <- function(time, event, X, newX, new.times, obsWeights, id, ...) {
-  survSL.require("survival")
-  survSL.require("randomForestSRC")
   data <- data.frame(time, event)
   data <- cbind(data, X)
-  fit.rfsrc <- rfsrc(Surv(time, event) ~ ., data=data, importance = FALSE, case.wt = obsWeights, ...)
+  fit.rfsrc <- randomForestSRC::rfsrc(survival::Surv(time, event) ~ ., data=data, importance = FALSE, case.wt = obsWeights, ...)
   survs <- predict(fit.rfsrc, newdata=newX, importance='none')$survival
   pred <- t(sapply(1:nrow(survs), function(i) {
-    approx(c(0,fit.rfsrc$time.interest), c(1,survs[i,]), method='constant', xout = new.times, rule = 2)$y
+    stats::approx(c(0,fit.rfsrc$time.interest), c(1,survs[i,]), method='constant', xout = new.times, rule = 2)$y
   }))
 
   fit <- list(object = fit.rfsrc)
@@ -231,10 +224,9 @@ survSL.rfsrc <- function(time, event, X, newX, new.times, obsWeights, id, ...) {
 #' @return Matrix of predictions, with the same number of rows as \code{newX} and number of columns equal to the length of \code{new.times}. Rows index new observations, and columns index new times at which the survival was computed.
 
 predict.survSL.rfsrc <- function(object, newX, new.times, ...) {
-  survSL.require("randomForestSRC")
   survs <- predict(object$object, newdata=newX, importance='none')$survival
   pred <- t(sapply(1:nrow(survs), function(i) {
-    approx(c(0,object$object$time.interest), c(1,survs[i,]), method='constant', xout = new.times, rule = 2)$y
+    stats::approx(c(0,object$object$time.interest), c(1,survs[i,]), method='constant', xout = new.times, rule = 2)$y
   }))
   return(pred)
 }
@@ -258,8 +250,9 @@ predict.survSL.rfsrc <- function(object, newX, new.times, ...) {
 
 
 survSL.gam <- function(time, event, X, newX, new.times, cts.num = 5, ...) {
-  survSL.require("mgcv")
-
+  
+  if (any(round(list(...)[["obsWeights"]],8)!=1))
+    warning("Argument 'obsWeights' is ignored by the 'gam' library algorithm")
   if ("gam" %in% loadedNamespaces())
     warning("mgcv and gam packages are both in use. You might see an error because both packages use the same function names.")
   cts.x <- apply(X, 2, function(x) (length(unique(x)) > cts.num))
@@ -331,23 +324,22 @@ predict.survSL.gam <- function(object, newX, new.times, ...) {
 #' \item{fit}{Two-element list including \code{reg.object}, the fitted \code{\link[survival]{survreg}} object, and \code{pos.object}, the fitted \code{\link[stats]{glm}} object for the probability that the event was positive (or 1 if no zeroes were detected).}
 
 survSL.expreg <- function(time, event, X, newX, new.times, obsWeights, ...) {
-  survSL.require("survival")
 
   if(any(time == 0 & event == 1)) {
     timepos <- as.numeric(time > 0 & event == 1)
-    fit.pos <- glm(timepos ~ ., data=cbind(timepos, X)[event == 1,], family='binomial', weights = obsWeights[event == 1])
+    fit.pos <- stats::glm(timepos ~ ., data=cbind(timepos, X)[event == 1,], family='binomial', weights = obsWeights[event == 1])
     pos.pred <- predict(fit.pos, newdata = newX, type = 'response')
   } else {
     fit.pos <- 1
     pos.pred <- rep(1, nrow(newX))
   }
 
-  fit.expreg <- survival::survreg(Surv(time[time > 0], event[time > 0]) ~ .,
+  fit.expreg <- survival::survreg(survival::Surv(time[time > 0], event[time > 0]) ~ .,
                                   data = X[time > 0,],
                                   weights = obsWeights[time > 0], dist = 'exponential')
   pred <- predict(fit.expreg, newdata = newX, type = 'quantile', p = seq(0, .999, by=.001))
   pred <- try(t(sapply(1:nrow(pred), function(j) {
-    pos.pred[j] * (1-approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
+    pos.pred[j] * (1-stats::approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
   })), silent = TRUE)
   if(inherits(pred, "try-error")) stop("Survival regression failed to produce predictions.")
 
@@ -368,7 +360,6 @@ survSL.expreg <- function(time, event, X, newX, new.times, obsWeights, ...) {
 #' @return Matrix of predictions, with the same number of rows as \code{newX} and number of columns equal to the length of \code{new.times}. Rows index new observations, and columns index new times at which the survival was computed.
 
 predict.survSL.expreg <- function(object, newX, new.times, ...) {
-  survSL.require("survival")
 
   if(inherits(object$pos.object, "glm")) {
     pos.pred <- predict(object$pos.object, newdata = newX, type = 'response')
@@ -378,7 +369,7 @@ predict.survSL.expreg <- function(object, newX, new.times, ...) {
 
   pred <- predict(object$reg.object, newdata = newX, type = 'quantile', p = seq(0, .999, by=.001))
   pred <- t(sapply(1:nrow(pred), function(j) {
-    pos.pred[j] * (1-approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
+    pos.pred[j] * (1-stats::approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
   }))
 
   return(pred)
@@ -389,23 +380,22 @@ predict.survSL.expreg <- function(object, newX, new.times, ...) {
 
 #' @rdname survSL.expreg
 survSL.weibreg <- function(time, event, X, newX, new.times, obsWeights, id, ...) {
-  survSL.require("survival")
 
   if(any(time == 0 & event == 1)) {
     timepos <- as.numeric(time > 0 & event == 1)
-    fit.pos <- glm(timepos ~ ., data=cbind(timepos, X)[event == 1,], family='binomial', weights = obsWeights[event == 1])
+    fit.pos <- stats::glm(timepos ~ ., data=cbind(timepos, X)[event == 1,], family='binomial', weights = obsWeights[event == 1])
     pos.pred <- predict(fit.pos, newdata = newX, type = 'response')
   } else {
     fit.pos <- 1
     pos.pred <- rep(1, nrow(newX))
   }
 
-  fit.weibreg <- survival::survreg(Surv(time[time > 0], event[time > 0]) ~ .,
+  fit.weibreg <- survival::survreg(survival::Surv(time[time > 0], event[time > 0]) ~ .,
                                   data = X[time > 0,],
                                   weights = obsWeights[time > 0], dist = 'weibull')
   pred <- predict(fit.weibreg, newdata = newX, type = 'quantile', p = seq(0, .999, by=.001))
   pred <- try(t(sapply(1:nrow(pred), function(j) {
-    pos.pred[j] * (1-approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
+    pos.pred[j] * (1-stats::approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
   })), silent=TRUE)
   if(inherits(pred, "try-error")) stop("Survival regression failed to produce predictions.")
 
@@ -417,7 +407,6 @@ survSL.weibreg <- function(time, event, X, newX, new.times, obsWeights, id, ...)
 
 #' @rdname predict.survSL.expreg
 predict.survSL.weibreg <- function(object, newX, new.times, ...) {
-  survSL.require("survival")
 
   if(inherits(object$pos.object, "glm")) {
     pos.pred <- predict(object$pos.object, newdata = newX, type = 'response')
@@ -427,7 +416,7 @@ predict.survSL.weibreg <- function(object, newX, new.times, ...) {
 
   pred <- predict(object$reg.object, newdata = newX, type = 'quantile', p = seq(0, .999, by=.001))
   pred <- t(sapply(1:nrow(pred), function(j) {
-    pos.pred[j] * (1-approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
+    pos.pred[j] * (1-stats::approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
   }))
 
   return(pred)
@@ -438,23 +427,22 @@ predict.survSL.weibreg <- function(object, newX, new.times, ...) {
 
 #' @rdname survSL.expreg
 survSL.loglogreg <- function(time, event, X, newX, new.times, obsWeights, id, ...) {
-  survSL.require("survival")
 
   if(any(time == 0 & event == 1)) {
     timepos <- as.numeric(time > 0 & event == 1)
-    fit.pos <- glm(timepos ~ ., data=cbind(timepos, X)[event == 1,], family='binomial', weights = obsWeights[event == 1])
+    fit.pos <- stats::glm(timepos ~ ., data=cbind(timepos, X)[event == 1,], family='binomial', weights = obsWeights[event == 1])
     pos.pred <- predict(fit.pos, newdata = newX, type = 'response')
   } else {
     fit.pos <- 1
     pos.pred <- rep(1, nrow(newX))
   }
 
-  fit.loglogreg <- survival::survreg(Surv(time[time > 0], event[time > 0]) ~ .,
+  fit.loglogreg <- survival::survreg(survival::Surv(time[time > 0], event[time > 0]) ~ .,
                                    data = X[time > 0,],
                                    weights = obsWeights[time > 0], dist = 'loglogistic')
   pred <- predict(fit.loglogreg, newdata = newX, type = 'quantile', p = seq(0, .999, by=.001))
   pred <- try(t(sapply(1:nrow(pred), function(j) {
-    pos.pred[j] * (1-approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
+    pos.pred[j] * (1-stats::approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
   })), silent=TRUE)
   if(inherits(pred, "try-error")) stop("Survival regression failed to produce predictions.")
 
@@ -466,7 +454,6 @@ survSL.loglogreg <- function(time, event, X, newX, new.times, obsWeights, id, ..
 
 #' @rdname predict.survSL.expreg
 predict.survSL.loglogreg <- function(object, newX, new.times, ...) {
-  survSL.require("survival")
 
   if(inherits(object$pos.object, "glm")) {
     pos.pred <- predict(object$pos.object, newdata = newX, type = 'response')
@@ -476,7 +463,7 @@ predict.survSL.loglogreg <- function(object, newX, new.times, ...) {
 
   pred <- predict(object$reg.object, newdata = newX, type = 'quantile', p = seq(0, .999, by=.001))
   pred <- t(sapply(1:nrow(pred), function(j) {
-    pos.pred[j] * (1-approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
+    pos.pred[j] * (1-stats::approx(pred[j,], seq(0, .999, by=.001), xout = new.times, method = 'linear', rule = 2)$y)
   }))
 
   return(pred)
@@ -499,10 +486,8 @@ predict.survSL.loglogreg <- function(object, newX, new.times, ...) {
 #' @param ... Additional ignored arguments.
 
 survSL.pchreg <- function(time, event, X, newX, new.times, obsWeights, breaks = 4, ...) {
-  survSL.require("pch")
 
-
-  fit.pchreg <- pch::pchreg(Surv(time, event) ~ .,
+  fit.pchreg <- pch::pchreg(survival::Surv(time, event) ~ .,
                                   data = X,
                                   weights = obsWeights, breaks = breaks)
   pred <- try(sapply(new.times, function(t0) {
@@ -527,7 +512,6 @@ survSL.pchreg <- function(time, event, X, newX, new.times, obsWeights, breaks = 
 #' @return Matrix of predictions, with the same number of rows as \code{newX} and number of columns equal to the length of \code{new.times}. Rows index new observations, and columns index new times at which the survival was computed.
 
 predict.survSL.pchreg <- function(object, newX, new.times, ...) {
-  survSL.require("pch")
 
   pred <- sapply(new.times, function(t0) {
     predict(object$fit$reg.object, newdata = cbind(newX, time = t0), type = 'distr')$Surv
@@ -552,10 +536,9 @@ predict.survSL.pchreg <- function(object, newX, new.times, ...) {
 #' @param ... Additional ignored arguments.
 #'
 survSL.pchSL <- function(time, event, X, newX, new.times, obsWeights, breaks, SL.library, ...) {
-  survSL.require("SuperLearner")
   if(length(breaks) == 1) {
     n.intervals <- breaks
-    breaks <- c(0,as.numeric(quantile(time[event == 1], probs = seq(0,1,by=1/n.intervals)[-1])))
+    breaks <- c(0,as.numeric(stats::quantile(time[event == 1], probs = seq(0,1,by=1/n.intervals)[-1])))
   } else {
     n.intervals <- length(breaks) - 1
   }
@@ -612,7 +595,6 @@ survSL.pchSL <- function(time, event, X, newX, new.times, obsWeights, breaks, SL
 #' @return Matrix of predictions, with the same number of rows as \code{newX} and number of columns equal to the length of \code{new.times}. Rows index new observations, and columns index new times at which the survival was computed.
 
 predict.survSL.pchSL <- function(object, newX, new.times, ...) {
-  survSL.require("SuperLearner")
   breaks <- object$fit$breaks
   n.intervals <- length(breaks) - 1
   intervals <- cbind(breaks[-length(breaks)], breaks[-1])
@@ -655,14 +637,12 @@ predict.survSL.pchSL <- function(object, newX, new.times, ...) {
 #' @return Logical vector of the same length as the number of columns of \code{X} indicating which variables were included.
 
 survscreen.glmnet <- function(time, event, X, obsWeights, alpha = 1, minscreen = 2, nfolds = 10, nlambda = 100, ...) {
-  survSL.require("glmnet")
-  survSL.require("survival")
   if (!is.matrix(X)) {
-    X <- model.matrix(~-1 + ., X)
+    X <- stats::model.matrix(~-1 + ., X)
   }
   time[event == 0] <- time[event == 0] + min(diff(sort(unique(time)))) / 2
   if(any(time == 0)) time[time == 0] <- min(time[time > 0]) / 2
-  fit.glmnet <- glmnet::cv.glmnet(y = Surv(time, event), x = X,
+  fit.glmnet <- glmnet::cv.glmnet(y = survival::Surv(time, event), x = X,
                                   weights = obsWeights, family = 'cox', alpha = alpha, nfolds = nfolds, nlambda = nlambda)
 
   whichVariable <- (as.numeric(coef(fit.glmnet$glmnet.fit, s = fit.glmnet$lambda.min)) != 0)
@@ -693,9 +673,8 @@ survscreen.glmnet <- function(time, event, X, obsWeights, alpha = 1, minscreen =
 #' @return Logical vector of the same length as the number of columns of \code{X} indicating which variables were included.
 
 survscreen.marg <- function(time, event, X, obsWeights, minscreen = 2, min.p = 0.1, ...) {
-  survSL.require("survival")
   pvals <- apply(X, 2, function(col) {
-    est <- survival::coxph(Surv(time, event) ~ ., data =  as.data.frame(cbind(time=time, event=event, col)),
+    est <- survival::coxph(survival::Surv(time, event) ~ ., data =  as.data.frame(cbind(time=time, event=event, col)),
                            weights = obsWeights)
     summary(est)$waldtest['pvalue']
   })
