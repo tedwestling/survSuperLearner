@@ -201,7 +201,7 @@ predict.survSL.coxph <- function(object, newX, new.times, ...) {
 survSL.rfsrc <- function(time, event, X, newX, new.times, obsWeights, id, ...) {
   data <- data.frame(time, event)
   data <- cbind(data, X)
-  fit.rfsrc <- randomForestSRC::rfsrc(survival::Surv(time, event) ~ ., data=data, importance = FALSE, case.wt = obsWeights, ...)
+  fit.rfsrc <- randomForestSRC::rfsrc(Surv(time, event) ~ ., data=data, importance = FALSE, case.wt = obsWeights, ...)
   survs <- predict(fit.rfsrc, newdata=newX, importance='none')$survival
   pred <- t(sapply(1:nrow(survs), function(i) {
     stats::approx(c(0,fit.rfsrc$time.interest), c(1,survs[i,]), method='constant', xout = new.times, rule = 2)$y
