@@ -70,7 +70,7 @@
 
 
 survSuperLearner <- function(time, event, X, newX, new.times, event.SL.library, cens.SL.library, id = NULL, verbose = FALSE, control = list(), cvControl = list(), obsWeights = NULL)  {
-  
+
   # Check to see if required packages are installed
   packages <- c("survival", "mgcv", "randomForestSRC", "glmnet", "SuperLearner",
                 "nnls", "Rsolnp")
@@ -79,7 +79,7 @@ survSuperLearner <- function(time, event, X, newX, new.times, event.SL.library, 
       stop(paste0("Package '", pkg, "' is required by survSuperLearner."))
     }
   }
-  
+
   time_start <- proc.time()
   call <- match.call(expand.dots = TRUE)
   if (!is.null(dim(time)) && ncol(time) > 0) stop("time must be an (n x 1)  numeric vector.")
@@ -210,7 +210,6 @@ survSuperLearner <- function(time, event, X, newX, new.times, event.SL.library, 
           }
         }
       }
-
     }
 
 
@@ -246,7 +245,7 @@ survSuperLearner <- function(time, event, X, newX, new.times, event.SL.library, 
 
   ###  Do iterative SuperLearning to get coefficients
   getCoef <- .surviterativeSL(event.Z = event.Z, cens.Z = cens.Z, time = time, event = event, X = X,
-                               obsWeights = obsWeights, control = control, verbose = verbose,
+                               obsWeights = obsWeights, id = id, control = control, verbose = verbose,
                                event.errorsInLibrary = event.errorsInCVLibrary, cens.errorsInLibrary = cens.errorsInCVLibrary)
   event.coef <- getCoef$event.coef
   cens.coef <- getCoef$cens.coef
@@ -661,7 +660,7 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
   return(validRows)
 }
 
-.surviterativeSL <- function(event.Z, cens.Z, time, event, X, obsWeights, control, verbose, event.errorsInLibrary, cens.errorsInLibrary) {
+.surviterativeSL <- function(event.Z, cens.Z, time, event, X, obsWeights, id, control, verbose, event.errorsInLibrary, cens.errorsInLibrary) {
   if(verbose) message("Performing iterative SuperLearner...")
   event.k <- dim(event.Z)[3]
   cens.k <- dim(cens.Z)[3]
