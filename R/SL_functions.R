@@ -69,7 +69,7 @@
 #' abline(0,1,col='red')
 
 
-survSuperLearner <- function(time, event, X, newX, new.times, event.SL.library, cens.SL.library, id = NULL, verbose = FALSE, control = list(), cvControl = list(), obsWeights = NULL)  {
+survSuperLearner <- function(time, event, X, newX = NULL, new.times, event.SL.library, cens.SL.library, id = NULL, verbose = FALSE, control = list(), cvControl = list(), obsWeights = NULL)  {
 
   # Check to see if required packages are installed
   packages <- c("survival", "mgcv", "randomForestSRC", "glmnet", "SuperLearner",
