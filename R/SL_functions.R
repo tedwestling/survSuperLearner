@@ -503,7 +503,7 @@ predict.survSuperLearner <- function (object, newdata, new.times, X = NULL, time
   if(any(!(event %in% c(0,1)))) stop("Event must be binary.")
   if(any(is.na(time)) | any(is.na(event))) stop("No missing values allowed in time or event.")
   if(any(is.na(X)) | any(is.na(newX))) stop("No missing values allowed in X or new X.")
-  if(length(time) != length(event) | length(time) != nrow(X)) stop("time, event, and treat must be n x 1 vectors.")
+  if(length(time) != length(event) | length(time) != nrow(X)) stop("time and event must be n x 1 vectors and X must have n rows.")
   if(!is.data.frame(X) | !is.data.frame(newX)) stop("X and newX must be data frames.")
   if(!identical(names(X), names(newX))) stop("X and newX must have the same features.")
   if(any(obsWeights < 0)) stop("obsWeights < 0 not allowed.")
