@@ -787,6 +787,7 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
 
 .survcomputeCoef <- function(time, event, t.vals, cens.vals, preds, obsWeights) {
   if(ncol(preds) == 1) return(1)
+  cens.vals[cens.vals < 1e-4] <- 1e-4
   out <- 1 - as.numeric(time <= t.vals) * event / cens.vals
   fit.nnls <- nnls::nnls(sqrt(obsWeights) * preds, sqrt(obsWeights) * out)
   # ind <- as.numeric(time > t.vals)
