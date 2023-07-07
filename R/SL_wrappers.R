@@ -335,7 +335,7 @@ survSL.expreg <- function(time, event, X, newX, new.times, obsWeights, ...) {
   }
 
   fit.expreg <- survival::survreg(survival::Surv(time[time > 0], event[time > 0]) ~ .,
-                                  data = X[time > 0,],
+                                  data = X[time > 0,,drop=FALSE],
                                   weights = obsWeights[time > 0], dist = 'exponential')
   pred <- predict(fit.expreg, newdata = newX, type = 'quantile', p = seq(0, .999, by=.001))
   pred <- try(t(sapply(1:nrow(pred), function(j) {
@@ -391,7 +391,7 @@ survSL.weibreg <- function(time, event, X, newX, new.times, obsWeights, id, ...)
   }
 
   fit.weibreg <- survival::survreg(survival::Surv(time[time > 0], event[time > 0]) ~ .,
-                                  data = X[time > 0,],
+                                  data = X[time > 0,,drop=FALSE],
                                   weights = obsWeights[time > 0], dist = 'weibull')
   pred <- predict(fit.weibreg, newdata = newX, type = 'quantile', p = seq(0, .999, by=.001))
   pred <- try(t(sapply(1:nrow(pred), function(j) {
@@ -438,7 +438,7 @@ survSL.loglogreg <- function(time, event, X, newX, new.times, obsWeights, id, ..
   }
 
   fit.loglogreg <- survival::survreg(survival::Surv(time[time > 0], event[time > 0]) ~ .,
-                                   data = X[time > 0,],
+                                   data = X[time > 0,,drop=FALSE],
                                    weights = obsWeights[time > 0], dist = 'loglogistic')
   pred <- predict(fit.loglogreg, newdata = newX, type = 'quantile', p = seq(0, .999, by=.001))
   pred <- try(t(sapply(1:nrow(pred), function(j) {
@@ -550,11 +550,11 @@ survSL.pchSL <- function(time, event, X, newX, new.times, obsWeights, breaks, SL
     else samp <- time > intervals[j,1]
     if(j < n.intervals) outcome <- as.numeric(time <= intervals[j,2] & event == 1)
     else outcome <- event
-    fit <- try(SuperLearner::SuperLearner(Y = outcome[samp], X = X[samp,], newX = newX, SL.library = SL.library, family = 'binomial', method = 'method.NNloglik', obsWeights = obsWeights[samp]), silent=TRUE)
+    fit <- try(SuperLearner::SuperLearner(Y = outcome[samp], X = X[samp,,drop=FALSE], newX = newX, SL.library = SL.library, family = 'binomial', method = 'method.NNloglik', obsWeights = obsWeights[samp]), silent=TRUE)
     if(inherits(fit, "try-error")) {
-      fit <- try(SuperLearner::SuperLearner(Y = outcome[samp], X = X[samp,], newX = newX, SL.library = SL.library, family = 'binomial', method = 'method.NNLS', obsWeights = obsWeights[samp]), silent=TRUE)
+      fit <- try(SuperLearner::SuperLearner(Y = outcome[samp], X = X[samp,,drop=FALSE], newX = newX, SL.library = SL.library, family = 'binomial', method = 'method.NNLS', obsWeights = obsWeights[samp]), silent=TRUE)
       if(inherits(fit, "try-error")) {
-        fit <- try(SuperLearner::SuperLearner(Y = outcome[samp], X = X[samp,], newX = newX, SL.library = SL.library, family = 'binomial', method = 'method.NNLS', obsWeights = obsWeights[samp]), silent=TRUE)
+        fit <- try(SuperLearner::SuperLearner(Y = outcome[samp], X = X[samp,,drop=FALSE], newX = newX, SL.library = SL.library, family = 'binomial', method = 'method.NNLS', obsWeights = obsWeights[samp]), silent=TRUE)
         if(inherits(fit, "try-error")) stop("Error in computing bin SuperLearner.")
       }
     }
