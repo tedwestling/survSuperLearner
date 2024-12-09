@@ -685,7 +685,7 @@ survSuperLearner.CV.control <- function (V = 10L, stratifyCV = TRUE, shuffle = T
   cens.Z.obs <- matrix(NA, nrow = N, ncol = cens.k)
   for(i in seq(N)) {
     for(j in seq(cens.k)) {
-      cens.Z.obs[,j] <- stats::approx(c(-1,control$cens.t.grid), c(1,cens.Z[i,,j]), xout = time[i] - epsilon, method = 'constant', rule = 2)$y
+      cens.Z.obs[i,j] <- stats::approx(c(-1,control$cens.t.grid), c(1,cens.Z[i,,j]), xout = time[i] - epsilon, method = 'constant', rule = 2)$y
     }
   }
 
